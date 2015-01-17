@@ -13,7 +13,9 @@ module ActiveShipping
     EventDetails = Struct.new(:description, :time, :zoneless_time, :location)
     EVENT_MESSAGE_PATTERNS = [
       /^(.*), (\w+ \d{1,2}, \d{4}, \d{1,2}:\d\d [ap]m), (.*), (\w\w) (\d{5})$/i,
-      /^Your item \w{2,3} (out for delivery|delivered) at (\d{1,2}:\d\d [ap]m on \w+ \d{1,2}, \d{4}) in (.*), (\w\w) (\d{5})\.$/i
+      /^(.*), (\w+ \d{1,2}, \d{4}, \d{1,2}:\d\d [ap]m), (\w+) EMS, (\w+)$/i,
+      /^(.*), (\w+ \d{1,2}, \d{4}, \d{1,2}:\d\d [ap]m), (.*)$/i,
+      /^Your item \w{2,3} (out for delivery|delivered)(?:\w+|\s)* at (\d{1,2}:\d\d [ap]m on \w+ \d{1,2}, \d{4}) in (.*), (\w\w) (\d{5})\.$/i
     ]
     self.retry_safe = true
 
@@ -240,9 +242,19 @@ module ActiveShipping
       state = $4
       zip_code = $5
 
+      if state.nil? && zip_code.nil? && city.to_s.downcase == 'china'
+        country = city.capitalize
+        city = nil
+      elsif zip_code.nil? && state.to_s.downcase == 'china'
+        country = state.capitalize
+        state = nil
+      else
+        country = 'USA'
+      end
+
       time = Time.parse(timestamp)
       zoneless_time = Time.utc(time.year, time.month, time.mday, time.hour, time.min, time.sec)
-      location = Location.new(city: city, state: state, postal_code: zip_code, country: 'USA')
+      location = Location.new(city: city, state: state, postal_code: zip_code, country: country)
       EventDetails.new(description, time, zoneless_time, location)
     end
 
@@ -524,7 +536,7 @@ module ActiveShipping
     end
 
     def parse_tracking_response(response, options)
-      actual_delivery_date, status = nil
+      actual_delivery_date, delivery_days, status = nil
       xml = REXML::Document.new(response)
       root_node = xml.elements['TrackResponse']
 
@@ -550,7 +562,11 @@ module ActiveShipping
 
         if last_shipment = shipment_events.last
           status = last_shipment.status
-          actual_delivery_date = last_shipment.time if last_shipment.delivered?
+           if last_shipment.delivered?
+              first_shipment = shipment_events.first
+              actual_delivery_date = last_shipment.time
+              delivery_days = ((last_shipment.time - first_shipment.time)/(24*3600)).round
+           end
         end
       end
 
@@ -562,7 +578,8 @@ module ActiveShipping
                            :destination => destination,
                            :tracking_number => tracking_number,
                            :status => status,
-                           :actual_delivery_date => actual_delivery_date
+                           :actual_delivery_date => actual_delivery_date,
+                           :delivery_days => delivery_days
       )
     end
 
