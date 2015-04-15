@@ -15,7 +15,7 @@ module ActiveShipping
       /^(.*), (\w+ \d{1,2}, \d{4}, \d{1,2}:\d\d [ap]m), (.*), (\w\w) (\d{5})$/i,
       /^(.*), (\w+ \d{1,2}, \d{4}, \d{1,2}:\d\d [ap]m), (\w+) EMS, (\w+)$/i,
       /^(.*), (\w+ \d{1,2}, \d{4}, \d{1,2}:\d\d [ap]m), (.*)$/i,
-      /^Your item \w{2,3} (out for delivery|delivered)(?:\w+|\s)* at (\d{1,2}:\d\d [ap]m on \w+ \d{1,2}, \d{4}) in (.*), (\w\w) (\d{5})\.$/i
+      /Your item \w{2,3} (out for delivery|delivered)(?:\w+|\s)* at (\d{1,2}:\d\d [ap]m on \w+ \d{1,2}, \d{4}) in (.*), (\w\w) (\d{5})\.$/i
     ]
     self.retry_safe = true
 
